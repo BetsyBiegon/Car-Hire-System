@@ -7,6 +7,7 @@ const paymentRoutes = require('./payment.routes');
 const reviewRoutes = require('./review.routes');
 const locationRoutes = require('./location.routes');
 const adminRoutes = require('./admin.routes');
+const notificationRoutes = require('./notification.routes');
 
 const router = Router();
 
@@ -18,5 +19,6 @@ router.use('/payments', paymentRoutes);
 router.use('/reviews', reviewRoutes);
 router.use('/locations', locationRoutes);
 router.use('/admin', adminRoutes);
+router.use('/notifications', notificationRoutes);
 
 module.exports = router;

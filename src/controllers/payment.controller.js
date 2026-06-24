@@ -1,6 +1,8 @@
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const prisma = require('../config/prisma');
 const { AppError } = require('../middleware/errorHandler');
+const { sendEmail } = require('../services/email.service');
+const { paymentReceipt } = require('../services/email.templates');
 
 async function createCheckout(req, res, next) {
   try {
@@ -73,7 +75,7 @@ async function stripeWebhook(req, res, next) {
       const session = event.data.object;
       const { bookingId } = session.metadata;
 
-      await prisma.$transaction([
+      const [payment] = await prisma.$transaction([
         prisma.payment.update({
           where: { bookingId },
           data: { status: 'PAID', paidAt: new Date(), transactionId: session.payment_intent },
@@ -83,6 +85,27 @@ async function stripeWebhook(req, res, next) {
           data: { status: 'CONFIRMED' },
         }),
       ]);
+
+      // Send payment receipt email
+      const booking = await prisma.booking.findUnique({
+        where: { id: bookingId },
+        include: {
+          user: true,
+          vehicle: true,
+          payment: true,
+        },
+      });
+      if (booking) {
+        const template = paymentReceipt({
+          firstName: booking.user.firstName,
+          bookingId: booking.id,
+          vehicle: `${booking.vehicle.make} ${booking.vehicle.model}`,
+          amount: booking.payment.amount,
+          paidAt: booking.payment.paidAt,
+          transactionId: booking.payment.transactionId,
+        });
+        sendEmail({ to: booking.user.email, ...template });
+      }
     }
 
     res.json({ received: true });

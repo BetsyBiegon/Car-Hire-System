@@ -1,5 +1,7 @@
 const prisma = require('../config/prisma');
 const { AppError } = require('../middleware/errorHandler');
+const { sendEmail } = require('../services/email.service');
+const { bookingConfirmation, bookingCancellation } = require('../services/email.templates');
 
 function calcDays(start, end) {
   const diff = new Date(end) - new Date(start);
@@ -48,6 +50,20 @@ async function createBooking(req, res, next) {
       },
       include: { vehicle: { select: { make: true, model: true, year: true } }, pickupLocation: true },
     });
+
+    // Send confirmation email (non-blocking)
+    const user = await prisma.user.findUnique({ where: { id: req.user.id } });
+    const template = bookingConfirmation({
+      firstName: user.firstName,
+      bookingId: booking.id,
+      vehicle: `${booking.vehicle.make} ${booking.vehicle.model}`,
+      startDate: booking.startDate,
+      endDate: booking.endDate,
+      totalDays: booking.totalDays,
+      totalAmount: booking.totalAmount,
+      pickupLocation: booking.pickupLocation.name,
+    });
+    sendEmail({ to: user.email, ...template });
 
     res.status(201).json({ success: true, data: booking });
   } catch (err) { next(err); }
@@ -99,7 +115,19 @@ async function cancelBooking(req, res, next) {
     const updated = await prisma.booking.update({
       where: { id: booking.id },
       data: { status: 'CANCELLED' },
+      include: { vehicle: true },
     });
+
+    // Send cancellation email
+    const user = await prisma.user.findUnique({ where: { id: req.user.id } });
+    const template = bookingCancellation({
+      firstName: user.firstName,
+      bookingId: updated.id,
+      vehicle: `${updated.vehicle.make} ${updated.vehicle.model}`,
+      startDate: updated.startDate,
+    });
+    sendEmail({ to: user.email, ...template });
+
     res.json({ success: true, data: updated });
   } catch (err) { next(err); }
 }
