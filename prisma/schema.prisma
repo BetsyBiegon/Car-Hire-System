@@ -1,0 +1,275 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── ENUMS ───────────────────────────────────────────────────────────────────
+
+enum Role {
+  CUSTOMER
+  ADMIN
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  ACTIVE
+  COMPLETED
+  CANCELLED
+  EXTENDED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  REFUNDED
+  FAILED
+}
+
+enum PaymentMethod {
+  STRIPE
+  PAYPAL
+  CASH
+}
+
+enum VehicleStatus {
+  AVAILABLE
+  RENTED
+  MAINTENANCE
+  INACTIVE
+}
+
+enum FuelType {
+  PETROL
+  DIESEL
+  ELECTRIC
+  HYBRID
+}
+
+enum TransmissionType {
+  MANUAL
+  AUTOMATIC
+}
+
+enum NotificationType {
+  EMAIL
+  SMS
+}
+
+// ─── MODELS ──────────────────────────────────────────────────────────────────
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  password      String
+  firstName     String
+  lastName      String
+  phone         String?
+  role          Role      @default(CUSTOMER)
+  isVerified    Boolean   @default(false)
+  isActive      Boolean   @default(true)
+  avatarUrl     String?
+  licenseNumber String?   // driver's license
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  bookings      Booking[]
+  reviews       Review[]
+  notifications Notification[]
+  auditLogs     AuditLog[]
+  refreshTokens RefreshToken[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+}
+
+model Vehicle {
+  id             String           @id @default(uuid())
+  make           String           // Toyota, BMW...
+  model          String           // Corolla, X5...
+  year           Int
+  licensePlate   String           @unique
+  vin            String?          @unique
+  color          String?
+  fuelType       FuelType         @default(PETROL)
+  transmission   TransmissionType @default(MANUAL)
+  seats          Int              @default(5)
+  doors          Int              @default(4)
+  pricePerDay    Decimal          @db.Decimal(10, 2)
+  status         VehicleStatus    @default(AVAILABLE)
+  mileage        Int              @default(0)
+  description    String?
+  features       String[]         // ["AC", "GPS", "Bluetooth"]
+  locationId     String
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  location       Location         @relation(fields: [locationId], references: [id])
+  images         VehicleImage[]
+  bookings       Booking[]
+  reviews        Review[]
+  maintenanceLogs MaintenanceLog[]
+
+  @@map("vehicles")
+}
+
+model VehicleImage {
+  id        String  @id @default(uuid())
+  vehicleId String
+  url       String
+  isPrimary Boolean @default(false)
+
+  vehicle   Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@map("vehicle_images")
+}
+
+model Location {
+  id        String    @id @default(uuid())
+  name      String
+  address   String
+  city      String
+  country   String
+  latitude  Float?
+  longitude Float?
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+
+  vehicles  Vehicle[]
+  bookings  Booking[]
+
+  @@map("locations")
+}
+
+model Booking {
+  id              String        @id @default(uuid())
+  userId          String
+  vehicleId       String
+  pickupLocationId String
+  dropoffLocationId String
+  startDate       DateTime
+  endDate         DateTime
+  totalDays       Int
+  pricePerDay     Decimal       @db.Decimal(10, 2)
+  totalAmount     Decimal       @db.Decimal(10, 2)
+  status          BookingStatus @default(PENDING)
+  notes           String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  user            User          @relation(fields: [userId], references: [id])
+  vehicle         Vehicle       @relation(fields: [vehicleId], references: [id])
+  pickupLocation  Location      @relation("PickupLocation", fields: [pickupLocationId], references: [id])
+  dropoffLocation Location      @relation("DropoffLocation", fields: [dropoffLocationId], references: [id])
+  payment         Payment?
+  extensions      BookingExtension[]
+
+  @@map("bookings")
+}
+
+model BookingExtension {
+  id            String   @id @default(uuid())
+  bookingId     String
+  originalEndDate DateTime
+  newEndDate    DateTime
+  extraDays     Int
+  extraAmount   Decimal  @db.Decimal(10, 2)
+  createdAt     DateTime @default(now())
+
+  booking       Booking  @relation(fields: [bookingId], references: [id])
+
+  @@map("booking_extensions")
+}
+
+model Payment {
+  id              String        @id @default(uuid())
+  bookingId       String        @unique
+  amount          Decimal       @db.Decimal(10, 2)
+  currency        String        @default("USD")
+  method          PaymentMethod
+  status          PaymentStatus @default(PENDING)
+  transactionId   String?       // external payment provider ID
+  refundId        String?
+  paidAt          DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  booking         Booking       @relation(fields: [bookingId], references: [id])
+
+  @@map("payments")
+}
+
+model Review {
+  id        String   @id @default(uuid())
+  userId    String
+  vehicleId String
+  bookingId String?
+  rating    Int      // 1-5
+  comment   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User     @relation(fields: [userId], references: [id])
+  vehicle   Vehicle  @relation(fields: [vehicleId], references: [id])
+
+  @@unique([userId, vehicleId]) // one review per user per vehicle
+  @@map("reviews")
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  type      NotificationType
+  subject   String
+  body      String
+  isRead    Boolean          @default(false)
+  sentAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  user      User             @relation(fields: [userId], references: [id])
+
+  @@map("notifications")
+}
+
+model MaintenanceLog {
+  id          String   @id @default(uuid())
+  vehicleId   String
+  description String
+  cost        Decimal? @db.Decimal(10, 2)
+  date        DateTime
+  createdAt   DateTime @default(now())
+
+  vehicle     Vehicle  @relation(fields: [vehicleId], references: [id])
+
+  @@map("maintenance_logs")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String?
+  action     String   // e.g. "BOOKING_CREATED", "VEHICLE_UPDATED"
+  entity     String   // e.g. "Booking", "Vehicle"
+  entityId   String?
+  changes    Json?    // before/after snapshot
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+
+  user       User?    @relation(fields: [userId], references: [id])
+
+  @@map("audit_logs")
+}
