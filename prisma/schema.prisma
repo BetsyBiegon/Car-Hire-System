@@ -150,8 +150,9 @@ model Location {
   isActive  Boolean   @default(true)
   createdAt DateTime  @default(now())
 
-  vehicles  Vehicle[]
-  bookings  Booking[]
+  vehicles         Vehicle[]
+  pickupBookings   Booking[] @relation("PickupLocation")
+  dropoffBookings  Booking[] @relation("DropoffLocation")
 
   @@map("locations")
 }
