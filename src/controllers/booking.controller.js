@@ -2,6 +2,7 @@ const prisma = require('../config/prisma');
 const { AppError } = require('../middleware/errorHandler');
 const { sendEmail } = require('../services/email.service');
 const { bookingConfirmation, bookingCancellation } = require('../services/email.templates');
+const { emailQueue, reminderQueue } = require('../queues/index');
 
 function calcDays(start, end) {
   const diff = new Date(end) - new Date(start);
@@ -51,7 +52,7 @@ async function createBooking(req, res, next) {
       include: { vehicle: { select: { make: true, model: true, year: true } }, pickupLocation: true },
     });
 
-    // Send confirmation email (non-blocking)
+    // Queue confirmation email
     const user = await prisma.user.findUnique({ where: { id: req.user.id } });
     const template = bookingConfirmation({
       firstName: user.firstName,
@@ -63,7 +64,16 @@ async function createBooking(req, res, next) {
       totalAmount: booking.totalAmount,
       pickupLocation: booking.pickupLocation.name,
     });
-    sendEmail({ to: user.email, ...template });
+    await emailQueue.add({ to: user.email, ...template }, { attempts: 3 });
+
+    // Schedule reminder 1 day before pickup
+    const reminderDate = new Date(booking.startDate);
+    reminderDate.setDate(reminderDate.getDate() - 1);
+    reminderDate.setHours(8, 0, 0, 0);
+    const delay = reminderDate.getTime() - Date.now();
+    if (delay > 0) {
+      await reminderQueue.add({ bookingId: booking.id }, { delay, attempts: 3 });
+    }
 
     res.status(201).json({ success: true, data: booking });
   } catch (err) { next(err); }

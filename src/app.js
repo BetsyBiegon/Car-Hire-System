@@ -27,10 +27,30 @@ const limiter = rateLimit({
 });
 app.use('/api/', limiter);
 
+// Stricter limit on auth endpoints
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  message: { error: 'Too many auth attempts, please try again later.' },
+});
+app.use('/api/v1/auth/', authLimiter);
+
 // ─── General Middleware ───────────────────────────────────────────────────────
 app.use(compression());
-app.use(express.json({ limit: '10kb' }));
-app.use(express.urlencoded({ extended: true }));
+
+// Capture raw body for Stripe webhooks before JSON parsing
+app.use((req, res, buf, encoding) => {
+  if (req.originalUrl === '/api/v1/payments/webhook') {
+    req.rawBody = buf.toString(encoding || 'utf8');
+  }
+});
+
+app.use(express.json({ limit: '10kb', verify: (req, res, buf, encoding) => {
+  if (req.originalUrl.includes('/payments/webhook')) {
+    req.rawBody = buf.toString(encoding || 'utf8');
+  }
+}}));
+app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 app.use(morgan('combined', { stream: { write: (msg) => logger.info(msg.trim()) } }));
 
 // ─── Static Files ─────────────────────────────────────────────────────────────
