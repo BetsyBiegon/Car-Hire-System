@@ -80,6 +80,36 @@ async function main() {
     ],
   });
 
+  // Fetch vehicles to get their IDs
+  const vehicles = await prisma.vehicle.findMany();
+  const corolla = vehicles.find((v) => v.model === 'Corolla');
+  const landCruiser = vehicles.find((v) => v.model === 'Land Cruiser');
+  const tucson = vehicles.find((v) => v.model === 'Tucson');
+
+  // Add images to vehicles
+  if (corolla && landCruiser && tucson) {
+    await prisma.vehicleImage.createMany({
+      skipDuplicates: true,
+      data: [
+        {
+          vehicleId: corolla.id,
+          url: 'https://images.unsplash.com/photo-1623869675781-80aa31cacc60?w=800',
+          isPrimary: true,
+        },
+        {
+          vehicleId: landCruiser.id,
+          url: 'https://images.unsplash.com/photo-1519641471654-76ce0107ad1b?w=800',
+          isPrimary: true,
+        },
+        {
+          vehicleId: tucson.id,
+          url: 'https://images.unsplash.com/photo-1617469767053-d3b523a0b982?w=800',
+          isPrimary: true,
+        },
+      ],
+    });
+  }
+
   console.log('Seed complete. Admin:', admin.email);
 }
 

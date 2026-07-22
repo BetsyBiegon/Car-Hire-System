@@ -9,6 +9,9 @@ const router = Router();
 
 router.use(authenticate);
 
+// Admin routes first to avoid /:id conflict
+router.get('/all', authorize('ADMIN'), bookingController.getAllBookings);
+
 router.get('/', bookingController.getMyBookings);
 router.post('/',
   [
@@ -32,7 +35,6 @@ router.post('/:id/extend',
 );
 
 // Admin
-router.get('/all', authorize('ADMIN'), bookingController.getAllBookings);
 router.patch('/:id/status', authorize('ADMIN'), auditLog('BOOKING_STATUS_UPDATED', 'Booking'), bookingController.updateBookingStatus);
 
 module.exports = router;

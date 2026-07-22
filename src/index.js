@@ -13,8 +13,12 @@ const PORT = process.env.PORT || 5000;
 
 async function start() {
   try {
-    await connectRedis();
-    await startScheduler();
+    try {
+      await connectRedis();
+      await startScheduler();
+    } catch (redisErr) {
+      logger.warn('Redis unavailable — queues and scheduler disabled:', redisErr.message);
+    }
     app.listen(PORT, () => {
       logger.info(`Server running on port ${PORT} [${process.env.NODE_ENV}]`);
     });
