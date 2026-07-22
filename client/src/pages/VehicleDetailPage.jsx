@@ -32,16 +32,20 @@ export default function VehicleDetailPage() {
     if (!user) return navigate('/login');
     try {
       setError('');
+      const locationId = vehicle.locationId || vehicle.location?.id;
+      if (!locationId) {
+        return setError('Location not found for this vehicle.');
+      }
       const booking = await createBooking({
         vehicleId: id,
-        pickupLocationId: vehicle.locationId,
-        dropoffLocationId: vehicle.locationId,
+        pickupLocationId: locationId,
+        dropoffLocationId: locationId,
         startDate: formData.startDate,
         endDate: formData.endDate,
       });
       navigate(`/bookings?new=${booking.data.data.id}`);
     } catch (err) {
-      setError(err.response?.data?.message || 'Booking failed.');
+      setError(err.response?.data?.message || 'Booking failed. Please try again.');
     }
   }
 

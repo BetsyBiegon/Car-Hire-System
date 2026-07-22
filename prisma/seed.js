@@ -93,17 +93,17 @@ async function main() {
       data: [
         {
           vehicleId: corolla.id,
-          url: 'https://images.unsplash.com/photo-1623869675781-80aa31cacc60?w=800',
+          url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/2023_Toyota_Corolla_%28facelift%2C_sedan%29%2C_front_8.13.23.jpg/1280px-2023_Toyota_Corolla_%28facelift%2C_sedan%29%2C_front_8.13.23.jpg',
           isPrimary: true,
         },
         {
           vehicleId: landCruiser.id,
-          url: 'https://images.unsplash.com/photo-1519641471654-76ce0107ad1b?w=800',
+          url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/62/2022_Toyota_Land_Cruiser_%28300_Series%2C_GXR%29%2C_front_8.22.22.jpg/1280px-2022_Toyota_Land_Cruiser_%28300_Series%2C_GXR%29%2C_front_8.22.22.jpg',
           isPrimary: true,
         },
         {
           vehicleId: tucson.id,
-          url: 'https://images.unsplash.com/photo-1617469767053-d3b523a0b982?w=800',
+          url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/08/2022_Hyundai_Tucson_%28NX4%29_Elite_2WD_%28facelift%29_wagon_%282022-10-19%29_01.jpg/1280px-2022_Hyundai_Tucson_%28NX4%29_Elite_2WD_%28facelift%29_wagon_%282022-10-19%29_01.jpg',
           isPrimary: true,
         },
       ],

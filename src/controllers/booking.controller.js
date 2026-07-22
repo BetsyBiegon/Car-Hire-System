@@ -64,7 +64,9 @@ async function createBooking(req, res, next) {
       totalAmount: booking.totalAmount,
       pickupLocation: booking.pickupLocation.name,
     });
-    await emailQueue.add({ to: user.email, ...template }, { attempts: 3 });
+    
+    // Non-blocking queue operations
+    emailQueue.add({ to: user.email, ...template }, { attempts: 3 }).catch(() => null);
 
     // Schedule reminder 1 day before pickup
     const reminderDate = new Date(booking.startDate);
@@ -72,7 +74,7 @@ async function createBooking(req, res, next) {
     reminderDate.setHours(8, 0, 0, 0);
     const delay = reminderDate.getTime() - Date.now();
     if (delay > 0) {
-      await reminderQueue.add({ bookingId: booking.id }, { delay, attempts: 3 });
+      reminderQueue.add({ bookingId: booking.id }, { delay, attempts: 3 }).catch(() => null);
     }
 
     res.status(201).json({ success: true, data: booking });
@@ -91,7 +93,11 @@ async function getMyBookings(req, res, next) {
         skip: (page - 1) * limit,
         take: parseInt(limit),
         include: {
-          vehicle: { select: { make: true, model: true, year: true }, include: { images: { where: { isPrimary: true }, take: 1 } } },
+          vehicle: {
+            include: {
+              images: { where: { isPrimary: true }, take: 1 },
+            },
+          },
           payment: { select: { status: true, amount: true } },
         },
         orderBy: { createdAt: 'desc' },

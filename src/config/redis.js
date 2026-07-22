@@ -7,10 +7,16 @@ function getRedis() {
   if (!client) {
     client = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
       lazyConnect: true,
-      maxRetriesPerRequest: 3,
+      maxRetriesPerRequest: 0,
+      retryStrategy: () => null, // don't retry — fail fast
+      enableOfflineQueue: false,
     });
 
-    client.on('error', (err) => logger.error('Redis error:', err));
+    client.on('error', (err) => {
+      if (err.code !== 'ECONNREFUSED') {
+        logger.error('Redis error:', err);
+      }
+    });
     client.on('connect', () => logger.info('Redis connected'));
   }
   return client;
