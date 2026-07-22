@@ -66,7 +66,7 @@ export default function VehicleDetailPage() {
         <div>
           <div className="rounded-xl overflow-hidden bg-gray-100 h-72">
             {vehicle.images?.length > 0 ? (
-              <img src={vehicle.images[activeImg]?.url} alt={vehicle.make} className="w-full h-full object-cover" />
+              <img src={vehicle.images[activeImg]?.url.startsWith('http') ? vehicle.images[activeImg]?.url : `http://localhost:5000${vehicle.images[activeImg]?.url}`} alt={vehicle.make} className="w-full h-full object-cover" />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-gray-300 text-6xl">🚗</div>
             )}

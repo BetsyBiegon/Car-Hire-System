@@ -114,7 +114,7 @@ export default function VehiclesPage() {
           <Link key={vehicle.id} to={`/vehicles/${vehicle.id}`} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition group">
             <div className="h-48 bg-gray-100 overflow-hidden">
               {vehicle.images?.[0] ? (
-                <img src={vehicle.images[0].url} alt={vehicle.make} className="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
+                <img src={vehicle.images[0].url.startsWith('http') ? vehicle.images[0].url : `http://localhost:5000${vehicle.images[0].url}`} alt={vehicle.make} className="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-gray-400 text-4xl">🚗</div>
               )}

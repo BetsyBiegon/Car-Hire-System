@@ -12,16 +12,21 @@ async function uploadVehicleImages(req, res, next) {
     const vehicle = await prisma.vehicle.findUnique({ where: { id: req.params.vehicleId } });
     if (!vehicle) return next(new AppError('Vehicle not found.', 404));
 
-    // Check if this vehicle already has a primary image
-    const hasPrimary = await prisma.vehicleImage.findFirst({
-      where: { vehicleId: vehicle.id, isPrimary: true },
-    });
+    // Remove existing images and replace with new ones
+    const existingImages = await prisma.vehicleImage.findMany({ where: { vehicleId: vehicle.id } });
+    for (const img of existingImages) {
+      if (!img.url.startsWith('http')) {
+        const filePath = path.join(process.cwd(), img.url);
+        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+      }
+    }
+    await prisma.vehicleImage.deleteMany({ where: { vehicleId: vehicle.id } });
 
-    const images = await prisma.vehicleImage.createMany({
+    await prisma.vehicleImage.createMany({
       data: req.files.map((file, index) => ({
         vehicleId: vehicle.id,
         url: `/uploads/${file.filename}`,
-        isPrimary: !hasPrimary && index === 0, // first upload becomes primary
+        isPrimary: index === 0,
       })),
     });
 

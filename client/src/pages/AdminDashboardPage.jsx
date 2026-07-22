@@ -101,6 +101,7 @@ function VehiclesTab() {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [editVehicle, setEditVehicle] = useState(null);
+  const [uploadingId, setUploadingId] = useState(null);
   const { register, handleSubmit, reset, setValue } = useForm();
 
   const { data } = useQuery({ queryKey: ['adminVehicles'], queryFn: () => getAllVehicles({ limit: 100 }).then(r => r.data.data) });
@@ -131,6 +132,32 @@ function VehiclesTab() {
       update.mutate({ id: editVehicle.id, data });
     } else {
       create.mutate(data);
+    }
+  }
+
+  async function handleImageUpload(vehicleId, files) {
+    if (!files.length) return;
+    setUploadingId(vehicleId);
+    try {
+      const formData = new FormData();
+      Array.from(files).forEach(f => formData.append('images', f));
+      const token = localStorage.getItem('accessToken');
+      const res = await fetch(`http://localhost:5000/api/v1/uploads/vehicles/${vehicleId}/images`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+      if (!res.ok) throw new Error('Upload failed');
+      // Invalidate both admin and public vehicle caches
+      queryClient.invalidateQueries({ queryKey: ['adminVehicles'] });
+      queryClient.invalidateQueries({ queryKey: ['vehicles'] });
+      queryClient.invalidateQueries({ queryKey: ['vehicle', vehicleId] });
+      queryClient.removeQueries({ queryKey: ['vehicles'] });
+      alert('Images uploaded successfully!');
+    } catch (err) {
+      alert('Upload failed. Make sure you are logged in as admin.');
+    } finally {
+      setUploadingId(null);
     }
   }
 
@@ -193,9 +220,21 @@ function VehiclesTab() {
                 <td className="px-6 py-3">
                   <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${v.status === 'AVAILABLE' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>{v.status}</span>
                 </td>
-                <td className="px-6 py-3 flex gap-2">
-                  <button onClick={() => onEdit(v)} className="text-blue-600 hover:underline text-xs">Edit</button>
-                  <button onClick={() => remove.mutate(v.id)} className="text-red-500 hover:underline text-xs">Deactivate</button>
+                <td className="px-6 py-3">
+                  <div className="flex items-center gap-3">
+                    <button onClick={() => onEdit(v)} className="text-blue-600 hover:underline text-xs">Edit</button>
+                    <button onClick={() => remove.mutate(v.id)} className="text-red-500 hover:underline text-xs">Deactivate</button>
+                    <label className="text-green-600 hover:underline text-xs cursor-pointer">
+                      {uploadingId === v.id ? 'Uploading...' : '📷 Images'}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        className="hidden"
+                        onChange={(e) => handleImageUpload(v.id, e.target.files)}
+                      />
+                    </label>
+                  </div>
                 </td>
               </tr>
             ))}
